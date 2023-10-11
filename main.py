@@ -19,12 +19,13 @@ def name(message):
     bot.register_next_step_handler(message, password)
 
 
-def password(message):
+def password(message: types.Message):
     global user_name
+    id = message.from_user.id
     user_password = message.text.strip()
     conn = sqlite3.connect('Users.db')
     cur = conn.cursor()
-    cur.execute('''INSERT INTO Users (Name, Password) VALUES(?, ?);''', (user_name, user_password))
+    cur.execute('''INSERT INTO Users (id, Name, Password) VALUES(?, ?, ?);''', (id, user_name, user_password))
     conn.commit()
     cur.close()
     conn.close()
@@ -36,6 +37,15 @@ def start(massege):
     bot.send_photo(massege.chat.id,
                    photo='https://vsthemes.org/uploads/posts/2021-10/1634974947_skrinshot-23-10-2021-12_40_48.webp',
                    caption=f"Здравствуйте, {massege.chat.first_name}, здесь вы сможете прочитать инфомацию о нашем боте")
+
+
+@bot.message_handler(commands=['menu'])
+def menu(message):
+    murkup = types.ReplyKeyboardMarkup()
+    btn1 = types.KeyboardButton('/Show_password')
+    btn2 = types.KeyboardButton('/Show_user_name')
+    murkup.add(btn1, btn2)
+    bot.send_message(message.chat.id, 'Доступные Вам функции', reply_markup=murkup)
 
 
 bot.delete_webhook(drop_pending_updates=True)
