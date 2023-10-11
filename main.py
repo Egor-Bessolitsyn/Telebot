@@ -1,16 +1,34 @@
 from telebot import *
+import sqlite3
 
 bot = TeleBot('6537625140:AAG23LsPYtGPmbzgDRkDYFFhb_wsMZsmqdM')
+user_name = ''
 
 
 @bot.message_handler(commands=['start'])
-def start(massege):
-    markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton('1',
-                                      url='https://ru.stackoverflow.com/questions/1354494/aiogram-ошибка-cant-parse-inline-keyboard-button-text-buttons-are-unallowed-in')
-    btn2 = types.InlineKeyboardButton('2', callback_data='2')
-    markup.add(btn1, btn2)
-    bot.reply_to(massege, "Привет", reply_markup=markup)
+def start(massage):
+    bot.reply_to(massage, "Привет, пожалуйста, зарегистрируйся")
+    bot.send_message(massage.chat.id, 'Введите имя')
+    bot.register_next_step_handler(massage, name)
+
+
+def name(message):
+    global user_name
+    user_name = message.text.strip()
+    bot.send_message(message.chat.id, 'Введите пароль')
+    bot.register_next_step_handler(message, password)
+
+
+def password(message):
+    global user_name
+    user_password = message.text.strip()
+    conn = sqlite3.connect('Users.db')
+    cur = conn.cursor()
+    cur.execute('''INSERT INTO Users (Name, Password) VALUES(?, ?);''', (user_name, user_password))
+    conn.commit()
+    cur.close()
+    conn.close()
+    bot.send_message(message.chat.id, 'Регистрация прошла успешно')
 
 
 @bot.message_handler(commands=['help'])
@@ -20,17 +38,5 @@ def start(massege):
                    caption=f"Здравствуйте, {massege.chat.first_name}, здесь вы сможете прочитать инфомацию о нашем боте")
 
 
-@bot.message_handler(commands=['markup'])
-def start(massege):
-    markup = types.ReplyKeyboardMarkup()
-    itembtna = types.KeyboardButton('a')
-    itembtnv = types.KeyboardButton('v')
-    itembtnc = types.KeyboardButton('c')
-    itembtnd = types.KeyboardButton('d')
-    itembtne = types.KeyboardButton('e')
-    markup.row(itembtna, itembtnv)
-    markup.row(itembtnc, itembtnd, itembtne)
-    bot.reply_to(massege, "Choose one letter:", reply_markup=markup)
-
-
+bot.delete_webhook(drop_pending_updates=True)
 bot.polling(none_stop=True)
