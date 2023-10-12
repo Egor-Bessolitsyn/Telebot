@@ -1,5 +1,7 @@
 from telebot import *
 import sqlite3
+import hashlib
+import random
 
 bot = TeleBot('6537625140:AAG23LsPYtGPmbzgDRkDYFFhb_wsMZsmqdM')
 user_name = ''
@@ -21,11 +23,16 @@ def name(message):
 
 def password(message: types.Message):
     global user_name
-    id = message.from_user.id
     user_password = message.text.strip()
+    n = random.randrange(1, 10 ** 10)
+    identity = int(user_password) + n
+    h = hashlib.new('sha384')
+    h.update(identity.to_bytes(10, byteorder='little'))
+    print(h.hexdigest())
     conn = sqlite3.connect('Users.db')
     cur = conn.cursor()
-    cur.execute('''INSERT INTO Users (id, Name, Password) VALUES(?, ?, ?);''', (id, user_name, user_password))
+    cur.execute('''INSERT INTO Users (id, Name, Password, Salt_id) VALUES(?, ?, ?, ?);''',
+                (message.from_user.id, user_name, h.hexdigest(), n))
     conn.commit()
     cur.close()
     conn.close()
@@ -40,12 +47,39 @@ def start(massege):
 
 
 @bot.message_handler(commands=['menu'])
-def menu(message):
-    murkup = types.ReplyKeyboardMarkup()
+def menu(message: types.Message):
+    murkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('/Show_password')
     btn2 = types.KeyboardButton('/Show_user_name')
     murkup.add(btn1, btn2)
     bot.send_message(message.chat.id, 'Доступные Вам функции', reply_markup=murkup)
+
+
+@bot.message_handler(commands=['Show_password'])
+def show_password(message:types.Message):
+    conn = sqlite3.connect('Users.db')
+    cur = conn.cursor()
+    a = int(message.from_user.id)
+    print(type(a))
+    cur.execute('''SELECT Password from Users WHERE id = ?;''', [a])
+    p = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    bot.send_message(message.chat.id, f'Ваш пароль: {p}')
+
+
+@bot.message_handler(commands=['Show_user_name'])
+def show_user_name(message):
+    conn = sqlite3.connect('Users.db')
+    cur = conn.cursor()
+    a = int(message.from_user.id)
+    cur.execute('''SELECT Name from Users WHERE id = ?;''', [a])
+    imya = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    bot.send_message(message.chat.id, f'Ваш имя: {imya}')
 
 
 bot.delete_webhook(drop_pending_updates=True)
